@@ -33,6 +33,7 @@ class Options
               "The site which to download from. Choose from: #{site_names}. Default: #{site_names.first}") do |s|
         raise "Unknown site. Choose from: #{site_names}" unless !s || site_names.include?(s)
         options.site = s
+        options.output = File.join(default_output, options.site)
       end
     
       opts.on("-r", "--resolution [WxH]",
@@ -42,8 +43,8 @@ class Options
       end
 
       opts.on("-o", "--output [DIR]",
-              "Directory to save the wallpapers. Default: #{default_output}") do |o|
-        raise "Output not an directory" unless !o || File.directory?(o)
+              "Directory to save the wallpapers. Default:" + File.join(default_output,'SITE').to_s) do |o|
+        raise "Output not an directory" unless !o || Dir.exists?(o)
         options.output = o
       end
     
@@ -83,8 +84,8 @@ class Options
             options.params[k] = p
           end 
          else
-           opts.on(v[:cmd], v[:long_cmd], v[:desc] + "\tDefault: " + v[:default].to_s) do 
-             options.params[k] = true
+           opts.on(v[:cmd], v[:long_cmd], v[:desc] + "\tDefault: " + v[:default].to_s) do |p|
+             options.params[k] = p
            end
          end
       end
@@ -121,7 +122,7 @@ class Options
   def default_options
     options = OpenStruct.new
     options.site = @sites.keys.first
-    options.output = default_output
+    options.output = File.join(default_output, options.site)
     options.resolution = default_resolution
     options.verbose = false
     options.params = nil

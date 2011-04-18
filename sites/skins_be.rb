@@ -20,24 +20,32 @@ class Skins_be
   end
   
   def self.site_params
-    { "skins.be" => { :first => {default:1,
-                              cmd:'-f N',
-                              long_cmd:'--first N',
-                              desc:'First page to download from',
-                              type:'decimal',
-                              validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
-                              error:'Must be a positive number'},
-                     :last => {default:10,
-                              cmd:'-l N',
-                              long_cmd:'--last N',
-                              type:'decimal',
-                              desc:'Last page to download to',
-                              validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
-                              error:'Must be a positive number'},
-                     :all => {default:false,
-                             cmd:'-a',
-                             long_cmd:'--all',
-                             desc:'Download all. Overides --last.'}
+    { "skins.be" => { :first =>       {default:1,
+                                      cmd:'-f N',
+                                      long_cmd:'--first N',
+                                      desc:'First page to download from.',
+                                      type:'decimal',
+                                      validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
+                                      error:'Must be a positive number'},
+                     :last =>         {default:10,
+                                      cmd:'-l N',
+                                      long_cmd:'--last N',
+                                      type:'decimal',
+                                      desc:'Last page to download to',
+                                      validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
+                                      error:'Must be a positive number'},
+                     :all =>          {default:false,
+                                      cmd:'-a',
+                                      long_cmd:'--[no-]all',
+                                      desc:'Download all. Overides --last.'},
+                     :directories => {default:false,
+                                      cmd:'-d',
+                                      long_cmd:'--[no-]directories',
+                                      desc:'Organize files by directories according to name.'},
+                     :pretty      => {default:true,
+                                      cmd:'-p',
+                                      long_cmd:'--[no-]pretty',
+                                      desc:'Prettyify the directory name. In conjunction with --directories'}
                            }}
                          
   end
@@ -50,7 +58,7 @@ class Skins_be
     page_url = SKINS_TAG_URL + @options.resolution + '/page'
   
     first = @options.params.first
-    last = @options.params.last
+    last = @options.params.all ? get_last_page(@options.resolution) : @options.params.last
   
     first.upto(last) do |page|
       page_doc = Nokogiri::HTML(open(page_url + '/' + page.to_s))
@@ -65,18 +73,33 @@ class Skins_be
     end
   end
   
+  def beutify_name(name)
+    @options.params.pretty ?
+                    name.gsub(/-/, ' ').gsub(/([a-z]+)/) {|s| s.capitalize} :
+                    name
+  end
   
   def save_file(url, dir)
-    uri = URI.parse(url)
     parts = url.split('/')
-    puts url
-    Net::HTTP.start( uri.host ) { |http|
-      resp = http.get( uri.path )
-      open( dir +'/' + parts[4], 'wb' ) { |file|
-        file.write(resp.body)
-      }
-    }
-
+    directory = @options.params.directories ? File.join(dir, beutify_name(parts[3])) : dir 
+    filename =  File.join(directory, parts[4])
+    
+    if File.exists?(filename)
+      puts filename +" already exists. Skipping..."
+    else
+      puts url
+      uri = URI.parse(url)
+      Net::HTTP.start( uri.host ) do |http|
+       # puts filename
+        resp = http.get( uri.path )
+        
+        Dir.mkdir(directory) unless Dir.exists? directory
+        
+        open( filename, 'wb' ) do |file|
+          file.write(resp.body)
+        end
+      end
+    end
   end
   
   private

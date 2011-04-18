@@ -25,7 +25,7 @@ include WallLeech
     sites = Skins_be.site_params
     #Parse options
     options = Options.new(sites).parse_options(ARGV)
-  
+    #p options
     #Download images
     Skins_be.new(options).fetch_pages
   end
