@@ -3,44 +3,36 @@
 # © 2011 Dharmesh Malam
 # FreeBSD License
 
-$LOAD_PATH << './lib'
-$LOAD_PATH << './sites'
-
+$LOAD_PATH << './lib' << './sites'
+# Internal
 require 'skins_be'
 require 'options'
+# External
+require 'logger'
 
-require 'nokogiri'
-require 'open-uri'
-require 'optparse'
-require 'ostruct'
-require 'rbconfig'
+module WallLeech
 
-include WallLeech
-
-#module WallLeech
-
+  # Start WallLeech
   def start
   
-    #Initialize sites
+    # Initialize sites
     sites = Skins_be.site_params
-    #Parse options
+    
+    # Parse options
     options = Options.new(sites).parse_options(ARGV)
-    #p options
-    #Download images
-    Skins_be.new(options).fetch_pages
+    
+    # Setup logger
+    log = Logger.new(STDOUT)
+    log.level = options.verbose ? Logger::DEBUG : Logger::INFO
+    
+    log.debug(options)
+    
+    # Leech
+    Skins_be.new(options, log).fetch
+    
   end
 
-#end
+end
 
-start
-
-
-
-
-
-
-
-
-
-
-
+#Lets get this party started
+WallLeech::start
