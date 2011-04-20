@@ -6,18 +6,21 @@
 $LOAD_PATH << './lib' << './sites'
 # Internal
 require 'skins_be'
+require 'simple_desktop'
 require 'options'
 # External
 require 'logger'
 
+include WallLeech
 module WallLeech
 
   # Start WallLeech
   def start
   
     # Initialize sites
-    sites = Skins_be.site_params
-    
+    #sites = Skins_be.site_params
+    sites = SimpleDesktop.site_params
+        
     # Parse options
     options = Options.new(sites).parse_options(ARGV)
     
@@ -28,11 +31,11 @@ module WallLeech
     log.debug(options)
     
     # Leech
-    Skins_be.new(options, log).fetch
-    
+    #Skins_be.new(options, log).fetch
+    SimpleDesktop.new(options, log).fetch
   end
 
 end
 
 #Lets get this party started
-WallLeech::start
+start

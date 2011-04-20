@@ -111,7 +111,7 @@ module WallLeech
       def prep_file(url, dir)
         parts = url.split('/')
         directory = @options.params.directories ? File.join(dir, beutify_name(parts[3])) : dir 
-        File.join(directory, parts[4])
+        super(url, directory)
       end
 
       # Pure function to adjust links to point at jpgs directly
