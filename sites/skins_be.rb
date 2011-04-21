@@ -59,8 +59,10 @@ module WallLeech
     def fetch
       @page_url = SKINS_TAG_URL + @options.resolution + SKINS_PAGE_PATH
   
-      first = @options.params.first.to_i
-      @last = @options.params.all ? get_last_page(@options.resolution) : @options.params.last.to_i
+      last_page = get_last_page(@options.resolution)
+      first = [@options.params.first.to_i, last_page].min
+      @last =   [first, 
+                 (@options.params.all || @options.params.last ? last_page : [@options.params.last.to_i, last_page].min)].max
       
       @q << scrape_links(first) # Queue up first page
             
@@ -75,18 +77,21 @@ module WallLeech
           url = @page_url + '/' + page.to_s
           # Get page async  
           @q << get_url(url) do |response|
-                             # Decode
-                             doc = Nokogiri::HTML response
-                             as = doc.search('a') 
-                             # Filter links
-                             links = as.find_all do |a| 
-                               a['href'] =~ /#{SKINS_WALLPAPER_URL}.*#{@options.resolution}.*/
-                              end
-           
-                              links.each do |l|
-                                link = adjust_link l['href'] # Create direct URL to jpg
-                                @q <<  save_file(link, prep_file(link, @options.output))  # Queue download
-                              end
+                               @log.info "Page: #{page}"
+                               # Decode
+                               doc = Nokogiri::HTML response
+                               as = doc.search('a') 
+                             
+                               # Filter links
+                               links = as.find_all do |a| 
+                                 a['href'] =~ /#{SKINS_WALLPAPER_URL}.*#{@options.resolution}.*/
+                               end
+                            
+                               links.each do |l|
+                                  link = adjust_link l['href'] # Create direct URL to jpg
+                                  @q <<  save_file(link, prep_file(link, @options.output))  # Queue download
+                               end
+                              
                               @q << scrape_links(page + 1) # Recurse with next page
                             end
           

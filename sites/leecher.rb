@@ -12,7 +12,6 @@ require 'logger'
 module WallLeech
 
   class Leecher
-    include EM::Deferrable
    
     MAX_IO = 6  # Max number of concurrent IOs
     
@@ -28,19 +27,20 @@ module WallLeech
     def reactor
       EM.run do
           
-          cb = lambda do |block|
+          cb = proc do |block|
               # Only pop off if current outstadings IO <= max IO
-              if @ios <= MAX_IO   
-                block.call
+              if @ios <= MAX_IO
+                @log.debug('++'); block.call;@log.debug('--');
                 @q.pop cb # Re-register callback 
               else
+                block
                  EM::next_tick {cb.call(block)}
               end
            end
         
         @q.pop cb # Register callback
         
-        Signal.trap("TERM") do shutdown end
+        Signal.trap("TERM") do @q << shutdown end
         
         @log.info("Starting...")
       end
@@ -79,12 +79,10 @@ module WallLeech
           inc_io
           @log.info("Getting: #{url}")
           http = EM::HttpRequest.new(url).get :redirects => 5
-        
-          http.callback do |http|
-             if http.error.empty?
-               block.call http.response
-               dec_io
-             end 
+          
+          http.callback do |h|
+            block.call http.response
+            dec_io
           end
         
           http.headers do |headers|
@@ -92,7 +90,7 @@ module WallLeech
           end        
         
           http.errback do
-            self.fail("Error downloading #{file}")
+            self.fail("Error downloading #{url}")
           end        
         end
       end
@@ -120,7 +118,6 @@ module WallLeech
             end
 
             pipe.errback do
-              p "errback #{@ios}"
               self.fail "Error downloading #{file}"
             end
      
@@ -136,7 +133,6 @@ module WallLeech
       end
     
       def fail(msg)
-        super
         @log.warn msg
         @ios -= 1            
       end

@@ -52,6 +52,7 @@ module WallLeech
   
       first = @options.params.first.to_i
       @last = @options.params.last.to_i unless @options.params.all
+      @last = first if @last && @last < first
       
       @q << scrape_links(first) # Queue up first page
             
@@ -61,33 +62,27 @@ module WallLeech
     # Scrape each page while doing all IO async
     # Returns a function to call later
     def scrape_links(page)
-      lambda do
-        
+      lambda do        
         if  !@last ||  page <= @last
           url = @page_url + '/' + page.to_s
           # Get page async  
           @q << get_url(url) do |response|
-                              if response.empty?
-                                  @log.error "#{url} is empty"
-                                  @q << shutdown
-                              else
-                                # Decode
-                                doc = Nokogiri::HTML response
-                                as = doc.search('a') 
-                                # Filter links
-                                links = as.find_all do |a| 
-                                  a['href'] =~ PIC_REGEX
-                                end
-           
-                                links.each do |l|
-                                  link =  l['href']
-                                  @q <<  save_file(link, prep_file(link, @options.output))  # Queue download
-                                end
-                              
-                                next_page = doc.xpath(OLDER_URL_XPATH)
-                                @q << (next_page.empty? ? shutdown : scrape_links(page + 1)) # Recurse with next page
-                              end
-                            end          
+              # Decode
+              doc = Nokogiri::HTML response
+              as = doc.search('a') 
+              # Filter links
+              links = as.find_all do |a| 
+                a['href'] =~ PIC_REGEX
+              end
+
+              links.each do |l|
+                link =  l['href']
+                @q <<  save_file(link, prep_file(link, @options.output))  # Queue download
+              end
+          
+              next_page = doc.xpath(OLDER_URL_XPATH)
+              @q << (next_page.empty? ? shutdown : scrape_links(page + 1)) # Recurse with next page
+            end
         else
           @q << shutdown
         end

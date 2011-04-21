@@ -18,8 +18,8 @@ module WallLeech
   def start
   
     # Initialize sites
-    #sites = Skins_be.site_params
-    sites = SimpleDesktop.site_params
+    sites = Skins_be.site_params
+    #sites = SimpleDesktop.site_params
         
     # Parse options
     options = Options.new(sites).parse_options(ARGV)
@@ -31,8 +31,8 @@ module WallLeech
     log.debug(options)
     
     # Leech
-    #Skins_be.new(options, log).fetch
-    SimpleDesktop.new(options, log).fetch
+    Skins_be.new(options, log).fetch
+    #SimpleDesktop.new(options, log).fetch
   end
 
 end
