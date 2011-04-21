@@ -12,59 +12,32 @@ require 'logger'
 module WallLeech
 
   class Leecher
-   
-    MAX_IO = 6  # Max number of concurrent IOs
-    
+
     attr_accessor :options
 
     def initialize(options, log)
       @options = options
       @log = log
-      @q = EM::Queue.new  # queue of IO blocks to execute
-      @ios = 0            # count IO requests
+      Fetcher::set_log(log)
     end
       
     def reactor
       EM.run do
-          
-          cb = proc do |block|
-              # Only pop off if current outstadings IO <= max IO
-              if @ios <= MAX_IO
-                @log.debug('++'); block.call;@log.debug('--');
-                @q.pop cb # Re-register callback 
-              else
-                block
-                 EM::next_tick {cb.call(block)}
-              end
-           end
-        
-        @q.pop cb # Register callback
-        
         Signal.trap("TERM") do @q << shutdown end
-        
         @log.info("Starting...")
+        yield
       end
     end # reactor
     
     def shutdown
-      lambda do
       # This may not always work as empty is approx!!!  
-      unless @q.empty? && @ios == 0
-          EM::next_tick shutdown 
+      if Fetcher.outstanding?
+          EM::next_tick {shutdown} 
         else
           @log.info("Stutting...")
           EM.stop
         end
-      end
     end  
-    
-    def inc_io
-      @ios += 1
-    end
-    
-    def dec_io
-      @ios -= 1
-    end
           
     protected
       # Pure function to create correct filename
@@ -72,70 +45,118 @@ module WallLeech
         parts = url.split('/')
         File.join(dir, parts[-1])
       end
-    
-      # Non blocking get url
-      def get_url(url, &block)
-        lambda do
-          inc_io
-          @log.info("Getting: #{url}")
-          http = EM::HttpRequest.new(url).get :redirects => 5
-          
-          http.callback do |h|
-            block.call http.response
-            dec_io
-          end
         
-          http.headers do |headers|
-            self.fail("Error (#{headers.status}) with url:" + url) unless headers.status == 200 || headers.status == 301
-          end        
-        
-          http.errback do
-            self.fail("Error downloading #{url}")
-          end        
-        end
-      end
-      
-      # Non blocking save file,
-      # Pre: file exists before calling
-      # Post: 'url' written to 'file' 
-      def save_file(url, file)
-        lambda do
-          inc_io
-          @log.info "Getting: #{url}"
-        
-          if File.exists? file
-            self.fail "#{file} already exists. Skipping..."
-          elsif Dir.exists? file
-            self.fail "#{file} is a directory"
-          else
-            directory = file.split(File::SEPARATOR)[0...-1].join(File::SEPARATOR)
-            Dir.mkdir directory unless Dir.exists? directory
-          
-            pipe = EM::HttpRequest.new(url).get :keepalive => true, :redirects => 5
-
-            pipe.headers do |headers|
-              self.fail "Error (#{headers.status}) with url: #{url}" unless headers.status == 200 || headers.status == 301
-            end
-
-            pipe.errback do
-              self.fail "Error downloading #{file}"
-            end
-     
-            pipe.callback do |http|
-              EM::File::write(file, http.response) do |length|
-                @log.info "Saving: #{file} (#{length / 1024}KiB)"
-                dec_io
-              end
-            end
-          
-          end
-        end
-      end
-    
-      def fail(msg)
-        @log.warn msg
-        @ios -= 1            
-      end
-    
   end # Class Leecher
-end # Module WallLeach
+  
+  class Fetcher
+    include EM::Deferrable
+      MAX_IO = 6  # Max number of concurrent IOs
+      @@ios = 0   # Count IO requests
+     def initialize(url)
+        @url = url
+      end
+
+    def schedule(&block)
+      if @@ios <= MAX_IO
+        @@log.debug('++'); block.call ; @@log.debug('--');
+      else
+         EM::next_tick {schedule &block} 
+      end
+    end
+    
+    def self.set_log(log)
+      @@log ||= log
+    end
+        
+    def inc_io
+      @@log.debug "IOs: #{@@ios} -> #{@@ios +1}"
+      @@ios += 1
+    end
+    
+    def dec_io
+      @@log.debug "IOs: #{@@ios} -> #{@@ios -1}"
+      @@ios -= 1
+    end
+    
+    def self.outstanding?
+      @@ios > 0
+    end
+    
+    # Non blocking get url
+    def get
+       schedule do
+          inc_io
+          @@log.info("Getting: #{@url}")
+          http = EM::HttpRequest.new(@url).get :redirects => 5
+        
+          http.callback do |h|
+            succeed http.response
+          end
+      
+          http.headers do |headers|
+            fail("Error (#{headers.status}) with url:#{@url}") unless headers.status == 200 || headers.status == 301
+          end        
+      
+          http.errback do
+            fail("Error downloading #{@url}")
+          end       
+        end
+      self 
+    end
+    
+    # Non blocking save file,
+    # Pre: file exists before calling
+    # Post: 'url' written to 'file' 
+    def save(file)
+      schedule do
+        inc_io
+        @@log.info "Getting: #{@url}"
+        if File.exists? file
+          fail "#{file} already exists. Skipping..."
+        elsif Dir.exists? file
+          fail "#{file} is a directory"
+        else
+          directory = file.split(File::SEPARATOR)[0...-1].join(File::SEPARATOR)
+          Dir.mkdir directory unless Dir.exists? directory
+        
+          self.callback do |response|
+            EM::File::write(file, response) do |length|
+              @@log.info "Saving: #{file} (#{length / 1024}KiB)"
+            end
+          end
+                   
+            @@log.info("Getting: #{@url}")
+            http = EM::HttpRequest.new(@url).get :redirects => 5
+           
+            http.callback do |h|
+              succeed http.response
+            end
+                    
+            http.headers do |headers|
+              fail("Error (#{headers.status}) with url:#{@url}") unless headers.status == 200 || headers.status == 301
+            end        
+                    
+            http.errback do
+              fail("Error downloading #{@url}")
+            end                  
+        end
+      
+      end
+      self
+    end
+  
+    def fail(msg)
+      super
+      @@log.warn msg
+      dec_io    
+    end
+    
+    def succeed(*args)
+      super 
+      dec_io
+    end
+    
+  end
+  
+  
+end # Module WallLeech

@@ -51,42 +51,53 @@ module WallLeech
       @page_url = SIMPLE_DESKTOP_URL + BROWSE_URL
   
       first = @options.params.first.to_i
-      @last = @options.params.last.to_i unless @options.params.all
-      @last = first if @last && @last < first
-      
-      @q << scrape_links(first) # Queue up first page
+      last = @options.params.last.to_i unless @options.params.all
+      last = first if @last && @last < first
             
-      reactor #Start the reactor
+      reactor {scrape_links(first, last)} #Start the reactor
     end
   
     # Scrape each page while doing all IO async
     # Returns a function to call later
-    def scrape_links(page)
-      lambda do        
-        if  !@last ||  page <= @last
+    def scrape_links(page, last)
+        if   !@last ||  page <= @last
+          @log.info "Page: #{page}"
           url = @page_url + '/' + page.to_s
-          # Get page async  
-          @q << get_url(url) do |response|
-              # Decode
-              doc = Nokogiri::HTML response
-              as = doc.search('a') 
-              # Filter links
-              links = as.find_all do |a| 
-                a['href'] =~ PIC_REGEX
-              end
-
-              links.each do |l|
-                link =  l['href']
-                @q <<  save_file(link, prep_file(link, @options.output))  # Queue download
-              end
           
-              next_page = doc.xpath(OLDER_URL_XPATH)
-              @q << (next_page.empty? ? shutdown : scrape_links(page + 1)) # Recurse with next page
+          # Get page async
+          fetcher = Fetcher.new(url).get
+          
+          fetcher.callback do |response|
+            # Decode
+            doc = Nokogiri::HTML response
+            as = doc.search('a') 
+           
+            # Filter links
+            links = as.find_all do |a| 
+             a['href'] =~ PIC_REGEX
             end
+          
+            links.each do |l|
+              link =  l['href']
+              Fetcher.new(link).save(prep_file(link, @options.output))  # Queue download
+            end
+          
+            next_page = doc.xpath(OLDER_URL_XPATH)
+            if next_page.empty? 
+              shutdown
+            else
+              scrape_links page + 1, last 
+            end
+          end
+          
+          fetcher.errback do
+            shutdown 
+          end
+          
+    
         else
-          @q << shutdown
+          shutdown
         end
-      end
     end
   
   end # Class Skins_be

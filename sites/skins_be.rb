@@ -61,44 +61,45 @@ module WallLeech
   
       last_page = get_last_page(@options.resolution)
       first = [@options.params.first.to_i, last_page].min
-      @last =   [first, 
-                 (@options.params.all || @options.params.last ? last_page : [@options.params.last.to_i, last_page].min)].max
+      last =   [first, 
+                 (@options.params.all ? last_page : [@options.params.last.to_i, last_page].min)].max
       
-      @q << scrape_links(first) # Queue up first page
-            
-      reactor #Start the reactor
+      reactor {scrape_links(first, last)} #Start the reactor
     end
   
     # Scrape each page while doing all IO async
     # Returns a function to call later
-    def scrape_links(page)
-      lambda do
-        if page <= @last
+    def scrape_links(page, last)
+      #Loop while pages exist
+      if page <= last
+          @log.info "Page: #{page}"
           url = @page_url + '/' + page.to_s
-          # Get page async  
-          @q << get_url(url) do |response|
-                               @log.info "Page: #{page}"
-                               # Decode
-                               doc = Nokogiri::HTML response
-                               as = doc.search('a') 
-                             
-                               # Filter links
-                               links = as.find_all do |a| 
-                                 a['href'] =~ /#{SKINS_WALLPAPER_URL}.*#{@options.resolution}.*/
-                               end
-                            
-                               links.each do |l|
-                                  link = adjust_link l['href'] # Create direct URL to jpg
-                                  @q <<  save_file(link, prep_file(link, @options.output))  # Queue download
-                               end
-                              
-                              @q << scrape_links(page + 1) # Recurse with next page
-                            end
           
-        else
-          @q << shutdown
-        end
-      end
+          # Get page async
+          fetcher = Fetcher.new(url).get
+          
+          fetcher.callback do |response|
+            # Decode
+            doc = Nokogiri::HTML response
+            as = doc.search('a') 
+           
+            # Filter links
+            links = as.find_all do |a| 
+             a['href'] =~ /#{SKINS_WALLPAPER_URL}.*#{@options.resolution}.*/
+            end
+          
+            links.each do |l|
+              link = adjust_link l['href'] # Create direct URL to jpg
+              Fetcher.new(link).save(prep_file(link, @options.output))  # Queue download
+            end
+            scrape_links(page += 1, last)
+          end
+          fetcher.errback do
+            shutdown 
+          end
+      else
+        shutdown    
+      end 
     end
   
     protected
