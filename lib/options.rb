@@ -11,142 +11,135 @@ require 'rbconfig'
 
 module WallLeech
 
-class Options
+  class Options
   
-  attr_accessor :sites
+    BANNER = "Usage: wall-leech.rb SITE [options] [site-options]"
+    attr_accessor :sites
   
-  def initialize(sites)
-    @sites = sites
-  end
+    def initialize(sites)
+      @sites = sites
+    end
 
-  def parse_options(argv)
-    
-    options = default_options
-    
-    opts = OptionParser.new do |opts|
-      opts.banner = "Usage: wall-leech.rb --site SITE [options] [site-options]"
-    
-      opts.separator ""
-      opts.separator "Options:"
-
-      opts.on('-s', '--site [SITE]',
-              "The site which to download from. Choose from: #{site_names}. Default: #{site_names.first}") do |s|
-        raise "Unknown site. Choose from: #{site_names}" unless !s || site_names.include?(s)
-        options.site = s
-        options.output = File.join(default_output, options.site)
-      end
-    
-      opts.on("-r", "--resolution [WxH]",
-              "Resolution of wallpapers to download. Default: #{default_resolution}") do |r|
-        raise "Invalid resolution: #{r} Please use WxH format" unless !r || r =~ /\d+x\d/
-        options.resolution = r
-      end
-
-      opts.on("-o", "--output [DIR]",
-              "Directory to save the wallpapers. Default:" + File.join(default_output,'SITE').to_s) do |o|
-        raise "Output not an directory" unless !o || Dir.exists?(o)
-        options.output = o
-      end
-    
-      opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
-        options.verbose = v
-      end
-
-      opts.separator ""
-      opts.separator "Common options:"
-
-      opts.on("-h", "--help", "Show this message") do
-        puts opts
-        exit
-      end
-
-      opts.on("--version", "Show version") do
-        puts version.join(".")
-        exit
-      end  
-    
-      opts.separator ""
-      opts.separator "Site options: #{site_names.first}"
-    
-       # opts.on("-p", "--params [SITE]", "Show Params for a particular site") do |site|
-       #    raise "Unknown site. Choose from: #{site_names}" unless site_names.include?(site)
-       #    print_site_options sites[site]
-       #    exit
-       #  end
+    def parse_options(argv)
       
-      options.params = default_site_options(options.site)
+      begin
+      
+        site = argv.slice(0)
+        raise ArgumentError, "Unknown site. Choose from: #{site_names}" unless site && 
+                                                                               !site.start_with?('-') &&
+                                                                               (site_names.any?do |s| s =~ /#{site}/i end)
+    
+        options = default_options
+        options.site = (site_names.find do |s| s =~ /#{site}/i end).to_sym
+        options.output = File.join(default_output, site)
+        params = default_site_options(options.site)
+      
+        opts = OptionParser.new do |opts|
+          opts.banner = BANNER
+          opts.separator  "Choose [SITE] from: #{site_names}"
+          opts.separator  ""
+          opts.separator "Options:"
 
-      sites[options.site].each_pair do |k, v|
-         
-        if v[:type]
-          opts.on(v[:cmd], v[:long_cmd], v[:type], v[:desc] + "\tDefault: " + v[:default].to_s) do |p|
-            #raise v[:error] unless p[:validate].call(p)
-            options.params[k] = p
-          end 
-         else
-           opts.on(v[:cmd], v[:long_cmd], v[:desc] + "\tDefault: " + v[:default].to_s) do |p|
-             options.params[k] = p
+          opts.on("-o", "--output [DIR]", String,
+                  "Directory to save the wallpapers. Default:" + File.join(default_output, "#{options.site}").to_s) do |o|
+            raise ArgumentError, "Output (#{o}) not an directory" unless o && Dir.exists?(o)
+            options.output = o
+          end
+    
+          opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+            options.verbose = v
+          end
+
+          opts.on("-d", "--debug", "Run in debug mode") do |d|
+            options.debug = d
+          end
+
+          opts.separator ""
+          opts.separator "Common options:"
+
+          opts.on("-h", "--help", "Show this message") do
+            puts opts
+            exit
+          end
+
+          opts.on("--version", "Show version") do
+            puts version.join(".")
+            exit
+          end  
+          
+           opts.separator ""
+           opts.separator "Site options: #{options.site.to_s}"
+
+           sites[options.site].each_pair do |k, v|
+            if v[:type]
+               opts.on(v[:cmd], v[:long_cmd], v[:type], v[:desc] + "\tDefault: " + v[:default].to_s) do |p|
+                raise ArgumentError, "Error with #{v[:cmd]}, #{v[:long_cmd]}:\t#{v[:error]}" unless v[:validate].call(p)
+                 params[k] = p
+               end 
+              else
+                opts.on(v[:cmd], v[:long_cmd], v[:desc] + "\tDefault: " + v[:default].to_s) do |p|
+                  params[k] = p
+                end
+              end
            end
-         end
+               
+        end.parse!(argv)
+        
+      rescue ArgumentError, OptionParser::InvalidOption => e
+        puts BANNER
+        puts e.message
+        exit
       end
-    
       
-    end.parse!(argv)
-    options.params = OpenStruct.new(options.params)
-    options
-  end
-
-  private
+      options.params = OpenStruct.new(params)
+      options
   
-  def version
-    [0,0,1]
-  end
-  
-  def default_resolution
-    "1920x1200"
-  end
-  
-  def default_output
-    case Config::CONFIG['host_os']
-      when /darwin/i
-        File.expand_path('~/Pictures/wallpaper')
-      when /mswin|windows/i
-        File.expand_path('~\Pictures\wallpaper')
-      when /linux/i
-        File.expand_path('~/wallpaper')
-      else
-        File.expand_path('~/wallpaper')
     end
-  end
-
-  def default_options
-    options = OpenStruct.new
-    options.site = @sites.keys.first
-    options.output = File.join(default_output, options.site)
-    options.resolution = default_resolution
-    options.verbose = false
-    options.params = nil
-    options
-  end
-  
-  def site_names
-    @sites.keys 
-  end
-  
-  def default_site_options(site)
-    params ={}
-    sites[site].each_pair do |k, v|
-      params[k] = v[:default]
+    
+    def version
+      [0,0,2]
     end
-    params
-  end
-  
-  def print_site_options(params)
-    params.values.each do |p|
-      puts p[:cmd] + "\t" + p[:long_cmd] + '\t'
-      puts p[:desc] + "\t Default:" + p[:default].to_s + "\n"
-    end
-  end
-end # End Options
 
-end
+    def self.default_resolution
+      "1920x1200"
+    end
+    
+    protected
+  
+      def default_output
+        case Config::CONFIG['host_os']
+          when /darwin/i
+            File.expand_path('~/Pictures/wallpaper')
+          when /mswin|windows/i
+            File.expand_path('~\Pictures\wallpaper')
+          when /linux/i
+            File.expand_path('~/wallpaper')
+          else
+            File.expand_path('~/wallpaper')
+        end
+      end
+
+      def default_options
+        options = OpenStruct.new
+        options.site = @sites.keys.first
+        options.output = File.join(default_output, options.site.to_s)
+        options.verbose = true
+        options.debug = false
+        options.params = nil
+        options
+      end
+  
+      def site_names
+        @sites.keys.map &:to_s 
+      end
+  
+      def default_site_options(site)
+        params ={}
+        sites[site].each_pair do |k, v|
+          params[k] = v[:default]
+        end
+        params
+      end
+
+  end # End Options
+end # End WallLeech

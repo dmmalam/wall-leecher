@@ -12,7 +12,7 @@ module WallLeech
 
   # Scrape skins.be and queue wallpapers for EM
   # Scrapes www.skins.be/tags/[Resolution]/page/[start - last]
-  class Skins_be < Leecher
+  class SkinsBe < Leecher
     SKINS_TAG_URL = 'http://www.skins.be/tags/'
     SKINS_WALLPAPERS_URL = "wallpapers.skins.be"
     SKINS_WALLPAPER_URL = "wallpaper.skins.be"
@@ -21,34 +21,40 @@ module WallLeech
  
     # Return site params for options parser
     def self.site_params
-      { "skins.be" => { :first =>       {default:1,
-                                         cmd:'-f N',
-                                         long_cmd:'--first N',
-                                         desc:'First page to download from.',
-                                         type:'Fixnum',
-                                         validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
-                                         error:'Must be a positive number'},
-                        :last =>       {default:10,
-                                         cmd:'-l N',
-                                         long_cmd:'--last N',
-                                         type:'Fixnum',
-                                         desc:'Last page to download to',
-                                         validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
-                                         error:'Must be a positive number'},
-                        :all =>         {default:false,
-                                         cmd:'-a',
-                                         long_cmd:'--[no-]all',
-                                         desc:'Download all. Overides --last.'},
-                        :directories => {default:false,
-                                         cmd:'-d',
-                                         long_cmd:'--[no-]directories',
-                                         desc:'Organize files by directories according to name.'},
-                        :pretty =>      {default:true,
-                                         cmd:'-p',
-                                         long_cmd:'--[no-]pretty',
-                                         desc:'Prettyify the directory name. In conjunction with --directories'}
-                           }}
-                         
+      { :first =>       {default:1,
+                         cmd:'-f',
+                         long_cmd:'--first [N]',
+                         desc:'First page to download from.',
+                         type:Integer,
+                         validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
+                         error:'Must be a positive number!'},
+        :last =>        {default:10,
+                         cmd:'-l',
+                         long_cmd:'--last [N]',
+                         type:Integer,
+                         desc:'Last page to download to',
+                         validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
+                         error:'Must be a positive number!'},
+        :all =>         {default:false,
+                         cmd:'-a',
+                         long_cmd:'--[no-]all',
+                         desc:'Download all. Overides --last.'},
+        :sort =>        {default:false,
+                         cmd:'-s',
+                         long_cmd:'--[no-]sort',
+                         desc:'Organize files into directories according to name.'},
+        :pretty =>      {default:true,
+                         cmd:'-p',
+                         long_cmd:'--[no-]pretty',
+                         desc:'Prettyify the directory name. In conjunction with --directories'},
+        :resolution =>  {default:Options.default_resolution,
+                         cmd:'-r',
+                         long_cmd:'--resolution [WxH]',
+                         desc:"Resolution of wallpapers to download. Default: #{Options.default_resolution}",
+                         type:String,
+                         validate: ->p{ p &&  p =~ /\A\d+x\d/}, # FIXME:/\A\d+x\d\z/ doesnt work?
+                         error:'Invalid resolution! Please use WxH format!'}
+        }                         
     end
 
     def self.to_s
@@ -57,9 +63,9 @@ module WallLeech
   
     # Initialise the leecher
     def fetch
-      @page_url = SKINS_TAG_URL + @options.resolution + SKINS_PAGE_PATH
+      @page_url = SKINS_TAG_URL + @options.params.resolution + SKINS_PAGE_PATH
   
-      last_page = get_last_page(@options.resolution)
+      last_page = get_last_page(@options.params.resolution)
       first = [@options.params.first.to_i, last_page].min
       last =   [first, 
                  (@options.params.all ? last_page : [@options.params.last.to_i, last_page].min)].max
@@ -85,7 +91,7 @@ module WallLeech
            
             # Filter links
             links = as.find_all do |a| 
-             a['href'] =~ /#{SKINS_WALLPAPER_URL}.*#{@options.resolution}.*/
+             a['href'] =~ /#{SKINS_WALLPAPER_URL}.*#{@options.params.resolution}.*/
             end
           
             links.each do |l|
@@ -116,7 +122,7 @@ module WallLeech
       # Pure function to create correct filename
       def prep_file(url, dir)
         parts = url.split('/')
-        directory = @options.params.directories ? File.join(dir, beutify_name(parts[3])) : dir 
+        directory = @options.params.sort ? File.join(dir, beutify_name(parts[3])) : dir 
         super(url, directory)
       end
 

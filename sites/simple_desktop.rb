@@ -20,26 +20,25 @@ module WallLeech
     
     # Return site params for options parser
     def self.site_params
-      { "skins.be" => { :first =>       {default:1,
-                                         cmd:'-f N',
-                                         long_cmd:'--first N',
-                                         desc:'First page to download from.',
-                                         type:'Fixnum',
-                                         validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
-                                         error:'Must be a positive number'},
-                        :last =>       {default:10,
-                                         cmd:'-l N',
-                                         long_cmd:'--last N',
-                                         type:'Fixnum',
-                                         desc:'Last page to download to',
-                                         validate: ->p{ p && p.is_a?(Fixnum) && p > 0 },
-                                         error:'Must be a positive number'},
-                        :all =>         {default:false,
-                                         cmd:'-a',
-                                         long_cmd:'--[no-]all',
-                                         desc:'Download all. Overides --last.'},
-                           }}
-                         
+     { :first =>  {default:1,
+                   cmd:'-f',
+                   long_cmd:'--first [N]',
+                   desc:'First page to download from.',
+                   type:Integer,
+                   validate:->p{ p && p.is_a?(Fixnum) && p > 0 },
+                   error:'Must be a positive number!'},
+      :last =>    {default:10,
+                   cmd:'-l',
+                   long_cmd:'--last [N]',
+                   type:Integer,
+                   desc:'Last page to download to',
+                   validate:->p{ p && p.is_a?(Fixnum) && p > 0 },
+                   error:'Must be a positive number!'},
+      :all =>     {default:false,
+                   cmd:'-a',
+                   long_cmd:'--[no-]all',
+                   desc:'Download all. Overides --last.'}
+      }
     end
 
     def self.to_s

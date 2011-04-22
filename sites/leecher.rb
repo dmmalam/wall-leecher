@@ -50,8 +50,10 @@ module WallLeech
   
   class Fetcher
     include EM::Deferrable
-      MAX_IO = 6  # Max number of concurrent IOs
+      MAX_IO = 8  # Max number of concurrent IOs
       @@ios = 0   # Count IO requests
+      OK_ERROR_CODES =[200, 301, 302]
+     
      def initialize(url)
         @url = url
       end
@@ -94,7 +96,7 @@ module WallLeech
           end
       
           http.headers do |headers|
-            fail("Error (#{headers.status}) with url:#{@url}") unless headers.status == 200 || headers.status == 301
+            fail("Error (#{headers.status}) with url:#{@url}") unless OK_ERROR_CODES.include?(headers.status)
           end        
       
           http.errback do
@@ -110,7 +112,6 @@ module WallLeech
     def save(file)
       schedule do
         inc_io
-        @@log.info "Getting: #{@url}"
         if File.exists? file
           fail "#{file} already exists. Skipping..."
         elsif Dir.exists? file
@@ -133,7 +134,7 @@ module WallLeech
             end
                     
             http.headers do |headers|
-              fail("Error (#{headers.status}) with url:#{@url}") unless headers.status == 200 || headers.status == 301
+              fail("Error (#{headers.status}) with url:#{@url}") unless OK_ERROR_CODES.include?(headers.status)
             end        
                     
             http.errback do
