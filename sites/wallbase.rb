@@ -1,14 +1,13 @@
-#!/usr/bin/env ruby
 # Wall-leecher Wallpaper downloader
 # © 2011 Dharmesh Malam
-# FreeBSD License
+# ISC License
 
 require 'nokogiri'
 require 'open-uri'
 require 'ostruct'
 require 'leecher'
 
-module WallLeech
+module WallLeecher
 
   # Scrape simpledesktop.com and queue wallpapers for EM
   # Scrapes http://simpledesktops.com/browse[start - last]

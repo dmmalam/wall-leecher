@@ -1,21 +1,21 @@
 #!/usr/bin/env ruby
 # Wall-leecher Wallpaper downloader
 # © 2011 Dharmesh Malam
-# FreeBSD License
+# ISC License
 
 $LOAD_PATH << './lib' << './sites'
 # Internal
 require 'skins_be'
-require 'simple_desktop'
+require 'simple_desktops'
 require 'national_geographic'
 require 'wallbase'
 require 'options'
 # External
 require 'logger'
 
-module WallLeech
+module WallLeecher
 
-  # Start WallLeech
+  # Start WallLeecher
   def start
         
     # Initialize sites
@@ -41,6 +41,6 @@ module WallLeech
 
 end
 
-include WallLeech
+include WallLeecher
 #Lets get this party started
 start

@@ -1,3 +1,7 @@
+# Wall-leecher Wallpaper downloader
+# © 2011 Dharmesh Malam
+# ISC License
+
 # bowling_spec.rb
 
 describe 'Bowling' do

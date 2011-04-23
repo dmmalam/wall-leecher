@@ -1,10 +1,14 @@
+# Wall-leecher Wallpaper downloader
+# © 2011 Dharmesh Malam
+# ISC License
+
 # skins_be_spec.rb
 
 $LOAD_PATH << '../../sites'
 require 'skins_be.rb'
 require 'ostruct'
 
-describe WallLeech::Skins_be do
+describe WallLeecher::Skins_be do
   
   # before(:each) do
   #   options = OpenStruct.new
@@ -14,11 +18,11 @@ describe WallLeech::Skins_be do
   #   options.verbose = false
   #   options.params = nil
   #   
-  #   @skins_be = WallLeech::Skins_be.new ()
+  #   @skins_be = WallLeecher::Skins_be.new ()
   # end
   
     describe 'site_param' do
-      subject { WallLeech::Skins_be }
+      subject { WallLeecher::Skins_be }
     
       it "responds to site_params" do
         subject.should_receive(:site_params)
@@ -38,7 +42,7 @@ describe WallLeech::Skins_be do
     
     describe 'to_s' do
       it "returns a string" do
-        WallLeech::Skins_be.to_s.length.should be
+        WallLeecher::Skins_be.to_s.length.should be
         
       end
     end

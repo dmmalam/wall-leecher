@@ -1,7 +1,6 @@
-#!/usr/bin/env ruby
 # Wall-leecher Wallpaper downloader
 # © 2011 Dharmesh Malam
-# FreeBSD License
+# ISC License
 
 require 'nokogiri'
 require 'open-uri'
@@ -9,7 +8,7 @@ require 'optparse'
 require 'ostruct'
 require 'rbconfig'
 
-module WallLeech
+module WallLeecher
 
   class Options
   
@@ -142,4 +141,4 @@ module WallLeech
       end
 
   end # End Options
-end # End WallLeech
+end # End WallLeecher

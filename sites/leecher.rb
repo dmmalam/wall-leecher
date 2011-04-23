@@ -1,7 +1,6 @@
-#!/usr/bin/env ruby
 # Wall-leecher Wallpaper downloader
 # © 2011 Dharmesh Malam
-# FreeBSD License
+# ISC License
 
 require 'ostruct'
 require 'eventmachine'
@@ -9,7 +8,7 @@ require 'em-http'
 require "em-files"
 require 'logger'
 
-module WallLeech
+module WallLeecher
 
   class Leecher
 
@@ -23,7 +22,7 @@ module WallLeech
       
     def reactor
       EM.run do
-        Signal.trap("TERM") do @q << shutdown end
+        Signal.trap("TERM") do shutdown end
         @log.info("Starting...")
         yield
       end
@@ -59,7 +58,7 @@ module WallLeech
       end
 
     def schedule(&block)
-      if @@ios <= MAX_IO
+      if @@ios < MAX_IO
         @@log.debug('++'); block.call ; @@log.debug('--');
       else
          EM::next_tick {schedule &block} 
@@ -67,7 +66,7 @@ module WallLeech
     end
     
     def self.set_log(log)
-      @@log ||= log
+      @@log = log
     end
         
     def inc_io
@@ -160,4 +159,4 @@ module WallLeech
   end
   
   
-end # Module WallLeech
+end # Module WallLeecher
