@@ -1,0 +1,44 @@
+PATH
+  remote: .
+  specs:
+    wall-leecher (0.0.3)
+      em-files (~> 0.2.2)
+      em-http-request (~> 1.0.0.beta.3)
+      eventmachine (~> 1.0.0.beta.3)
+      nokogiri (~> 1.4.4)
+
+GEM
+  remote: http://rubygems.org/
+  specs:
+    addressable (2.2.5)
+    diff-lcs (1.1.2)
+    em-files (0.2.2)
+      eventmachine (>= 0.12.10)
+      hash-utils (>= 0.14.0)
+    em-http-request (1.0.0.beta.3)
+      addressable (>= 2.2.3)
+      em-socksify
+      eventmachine
+      http_parser.rb (>= 0.5.1)
+    em-socksify (0.1.0)
+      eventmachine
+    eventmachine (1.0.0.beta.3)
+    hash-utils (0.14.0)
+    http_parser.rb (0.5.1)
+    nokogiri (1.4.4)
+    rspec (2.5.0)
+      rspec-core (~> 2.5.0)
+      rspec-expectations (~> 2.5.0)
+      rspec-mocks (~> 2.5.0)
+    rspec-core (2.5.1)
+    rspec-expectations (2.5.0)
+      diff-lcs (~> 1.1.2)
+    rspec-mocks (2.5.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  bundler (>= 1.0.0)
+  rspec (>= 2.5.0)
+  wall-leecher!
