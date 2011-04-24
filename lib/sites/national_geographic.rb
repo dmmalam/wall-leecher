@@ -30,7 +30,7 @@ module WallLeecher
           :all =>     {default:false,
                        cmd:'-a',
                        long_cmd:'--[no-]all',
-                       desc:'Download all. Overides --number'}
+                       desc:'Download all. Overrides --number'}
         }
       end
 

@@ -27,7 +27,7 @@ module WallLeecher
                      type:Integer,
                      validate:->p{ p && p.is_a?(Fixnum) && p > 0 },
                      error:'Must be a positive number!'},
-        :last =>    {default:10,
+        :last =>    {default:3,
                      cmd:'-l',
                      long_cmd:'--last [N]',
                      type:Integer,
@@ -37,7 +37,7 @@ module WallLeecher
         :all =>     {default:false,
                      cmd:'-a',
                      long_cmd:'--[no-]all',
-                     desc:'Download all. Overides --last.'}
+                     desc:'Download all. Overrides --last.'}
         }
       end
 
