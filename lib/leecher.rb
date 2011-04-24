@@ -9,7 +9,6 @@ require "em-files"
 require 'logger'
 
 module WallLeecher
-
   class Leecher
 
     attr_accessor :options
@@ -19,7 +18,7 @@ module WallLeecher
       @log = log
       Fetcher::set_log(log)
     end
-      
+    
     def reactor
       EM.run do
         Signal.trap("TERM") do shutdown end
@@ -27,7 +26,7 @@ module WallLeecher
         yield
       end
     end # reactor
-    
+  
     def shutdown
       # This may not always work as empty is approx!!!  
       if Fetcher.outstanding?
@@ -37,22 +36,22 @@ module WallLeecher
           EM.stop
         end
     end  
-          
+        
     protected
       # Pure function to create correct filename
       def prep_file(url, dir)
         parts = url.split('/')
         File.join(dir, parts[-1])
       end
-        
+      
   end # Class Leecher
-  
+
   class Fetcher
     include EM::Deferrable
       MAX_IO = 8  # Max number of concurrent IOs
       @@ios = 0   # Count IO requests
       OK_ERROR_CODES =[200, 301, 302]
-     
+   
      def initialize(url)
         @url = url
       end
@@ -64,47 +63,47 @@ module WallLeecher
          EM::next_tick {schedule &block} 
       end
     end
-    
+  
     def self.set_log(log)
       @@log = log
     end
-        
+      
     def inc_io
       @@log.debug "IOs: #{@@ios} -> #{@@ios +1}"
       @@ios += 1
     end
-    
+  
     def dec_io
       @@log.debug "IOs: #{@@ios} -> #{@@ios -1}"
       @@ios -= 1
     end
-    
+  
     def self.outstanding?
       @@ios > 0
     end
-    
+  
     # Non blocking get url
     def get
        schedule do
           inc_io
           @@log.info("Getting: #{@url}")
           http = EM::HttpRequest.new(@url).get :redirects => 5
-        
+      
           http.callback do |h|
             succeed http.response
           end
-      
+    
           http.headers do |headers|
             fail("Error (#{headers.status}) with url:#{@url}") unless OK_ERROR_CODES.include?(headers.status)
           end        
-      
+    
           http.errback do
             fail("Error downloading #{@url}")
           end       
         end
       self 
     end
-    
+  
     # Non blocking save file,
     # Pre: file exists before calling
     # Post: 'url' written to 'file' 
@@ -118,45 +117,44 @@ module WallLeecher
         else
           directory = file.split(File::SEPARATOR)[0...-1].join(File::SEPARATOR)
           Dir.mkdir directory unless Dir.exists? directory
-        
+      
           self.callback do |response|
             EM::File::write(file, response) do |length|
               @@log.info "Saving: #{file} (#{length / 1024}KiB)"
             end
           end
-                   
+                 
             @@log.info("Getting: #{@url}")
             http = EM::HttpRequest.new(@url).get :redirects => 5
-           
+         
             http.callback do |h|
               succeed http.response
             end
-                    
+                  
             http.headers do |headers|
               fail("Error (#{headers.status}) with url:#{@url}") unless OK_ERROR_CODES.include?(headers.status)
             end        
-                    
+                  
             http.errback do
               fail("Error downloading #{@url}")
             end                  
         end
-      
+    
       end
       self
     end
-  
+
     def fail(msg)
       super
       @@log.warn msg
       dec_io    
     end
-    
+  
     def succeed(*args)
       super 
       dec_io
     end
-    
+  
   end
-  
-  
+    
 end # Module WallLeecher

@@ -1,9 +1,9 @@
-#!/usr/bin/env ruby
 # Wall-leecher Wallpaper downloader
 # © 2011 Dharmesh Malam
 # ISC License
+path = File.expand_path(File.join(File.dirname(__FILE__), 'sites'))
+$LOAD_PATH.unshift path unless $LOAD_PATH.include? path
 
-$LOAD_PATH << './lib' << './sites'
 # Internal
 require 'skins_be'
 require 'simple_desktops'
@@ -19,8 +19,8 @@ module WallLeecher
   def start
         
     # Initialize sites
-    sites = Module.constants.inject({}) do |s, k|
-              klass = Object.const_get k
+    sites = WallLeecher::Sites.constants.inject({}) do |s, k|
+              klass = WallLeecher::Sites.const_get k
               s[k] = klass.site_params  if k != k.upcase && Leecher > klass
               s
             end
@@ -35,7 +35,7 @@ module WallLeecher
     log.debug(options)
     
     # Leech
-    leecher = Object.const_get options.site
+    leecher = WallLeecher::Sites.const_get options.site
     leecher.new(options, log).fetch
   end
 

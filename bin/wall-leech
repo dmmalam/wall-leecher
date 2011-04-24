@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+wall_leech_dir = File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib'))
+$LOAD_PATH.unshift(wall_leech_dir) unless $LOAD_PATH.include?(wall_leech_dir)
+require 'wall-leecher'
+#Lets get this party started
+WallLeecher.start ARGV
+

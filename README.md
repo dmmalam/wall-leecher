@@ -1,9 +1,9 @@
  Wall-Leecher
 === 
 
-What is it?
+Summary
 ---
-A command line wallpaper downloader written with Ruby's Event Machine that can download from a variety of sites.
+A Ruby Event Machine driven command line wallpaper downloader that can search from a variety of sites.
 
 Why?
 ---
