@@ -49,17 +49,16 @@ module WallLeecher
       def fetch
         @page_url = SIMPLE_DESKTOP_URL + BROWSE_URL
   
-        first = @options.params.first.to_i
-        last = @options.params.last.to_i unless @options.params.all
-        last = first if @last && @last < first
-            
+        first = @options.params.first
+        last = [@options.params.last, first].max unless @options.params.all
+        
         reactor {scrape_links(first, last)} #Start the reactor
       end
   
       # Scrape each page while doing all IO async
       # Returns a function to call later
       def scrape_links(page, last)
-          if   !@last ||  page <= @last
+          if !last ||  page <= last
             @log.info "Page: #{page}"
             url = @page_url + '/' + page.to_s
           

@@ -61,10 +61,10 @@ module WallLeecher
       end
     
       def self.shutdown
-        if @@ios > 0 || @@writes > 0
-           @@q <<  ->{self.shutdown} 
+        if @@ios > 0 || @@writes > 0 || !@@q.empty?
+           @@q <<  ->{self.shutdown}
         else
-            @@log.info("Stutting...")
+            @@log.info("Done")
             EM.stop
         end
       end
@@ -100,9 +100,13 @@ module WallLeecher
       end
 
       def release
-        unless @@q.empty? || @@ios >= MAX_IO || @@writes >= MAX_WRITES
-           @@q.pop.call
+       @@log.debug "Queue items: #{@@q.size}"
+       currentQ = @@q.clone
+       @@q.clear
+        until currentQ.empty? || @@ios >= MAX_IO || @@writes >= MAX_WRITES
+           currentQ.shift.call
         end
+        @@q = currentQ + @@q
       end
       
       protected :inc_io, :dec_io, :inc_writes, :dec_writes, :release, :schedule

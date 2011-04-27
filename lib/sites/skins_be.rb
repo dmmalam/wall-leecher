@@ -66,9 +66,9 @@ module WallLeecher
         @page_url = SKINS_TAG_URL + @options.params.resolution + SKINS_PAGE_PATH
   
         last_page = get_last_page(@options.params.resolution)
-        first = [@options.params.first.to_i, last_page].min
+        first = [@options.params.first, last_page].min
         last =   [first, 
-                   (@options.params.all ? last_page : [@options.params.last.to_i, last_page].min)].max
+                   (@options.params.all ? last_page : [@options.params.last, last_page].min)].max
       
         reactor {scrape_links(first, last)} #Start the reactor
       end
@@ -98,7 +98,6 @@ module WallLeecher
                 link = adjust_link l['href'] # Create direct URL to jpg
                 Fetcher.new(link).save(prep_file(link, @options.output))  # Queue download
               end
-              
               scrape_links(page + 1, last)
             end
             

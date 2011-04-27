@@ -41,14 +41,14 @@ module WallLeecher
       # Initialise the leecher
       def fetch
         url = NATGEO_URL + BROWSE_URL
-        reactor {scrape_links(url, 0)} #Start the reactor
+        reactor {scrape_links(url, @options.params.number, 1)} #Start the reactor
       end
   
       # Scrape each page while doing all IO async
       # Returns a function to call later
-      def scrape_links(url, num)
+      def scrape_links(url, number, acc)
       
-        @log.info "Number: #{num + 1}"
+        @log.info "Number: #{acc}"
       
         # Get page async
         fetcher = Fetcher.new(url).get
@@ -67,13 +67,13 @@ module WallLeecher
         
           next_page_node = doc.xpath(NEXT_PAGE_XPATH)
           next_page_url = next_page_node.first['href']
-          if (next_page_node.empty? || 
-              !@options.params.all && num > @options.params.number) ||
-              next_page_url.empty? 
-            shutdown
+          if (!(next_page_node.empty? || next_page_url.empty?) && 
+              (@options.params.all || acc < number) )
+            scrape_links NATGEO_URL + next_page_url, number, acc + 1
           else
-            scrape_links NATGEO_URL + next_page_url, num + 1
+            shutdown
           end
+          
         end
       
         fetcher.errback do
