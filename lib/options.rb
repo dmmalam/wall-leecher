@@ -96,7 +96,7 @@ module WallLeecher
     end
     
     def self.version
-      [0,0,3]
+      [0,1,0]
     end
 
     def self.default_resolution

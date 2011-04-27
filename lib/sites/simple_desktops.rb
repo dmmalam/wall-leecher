@@ -92,8 +92,7 @@ module WallLeecher
             fetcher.errback do
               shutdown 
             end
-          
-    
+              
           else
             shutdown
           end

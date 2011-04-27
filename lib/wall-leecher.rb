@@ -16,7 +16,7 @@ require 'logger'
 module WallLeecher
 
   # Start WallLeecher
-  def start
+  def start(argv)
         
     # Initialize sites
     sites = WallLeecher::Sites.constants.inject({}) do |s, k|
@@ -26,7 +26,7 @@ module WallLeecher
             end
  
     # Parse options
-    options = Options.new(sites).parse_options(ARGV)
+  options = Options.new(sites).parse_options(argv)
     
     # Setup logger
     log = Logger.new(STDOUT)
@@ -42,5 +42,4 @@ module WallLeecher
 end
 
 include WallLeecher
-#Lets get this party started
-start
+

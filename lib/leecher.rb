@@ -20,6 +20,8 @@ module WallLeecher
     end
     
     def reactor
+      EM.kqueue # OSX, *BSD
+      EM.epoll  # Linux
       EM.run do
         Signal.trap("TERM") do shutdown end
         @log.info("Starting...")
@@ -28,13 +30,7 @@ module WallLeecher
     end # reactor
   
     def shutdown
-      # This may not always work as empty is approx!!!  
-      if Fetcher.outstanding?
-          EM::next_tick {shutdown} 
-        else
-          @log.info("Stutting...")
-          EM.stop
-        end
+       Fetcher::shutdown
     end  
         
     protected
@@ -48,113 +44,125 @@ module WallLeecher
 
   class Fetcher
     include EM::Deferrable
-      MAX_IO = 8  # Max number of concurrent IOs
-      @@ios = 0   # Count IO requests
+      MAX_IO = 8  # Max number of concurrent network IOs
+      @@ios = 0   # Count network IO requests
+      MAX_WRITES = 20  # Max number of concurrent local disk IOs
+      @@writes = 0 # Count local IO
       OK_ERROR_CODES =[200, 301, 302]
    
-     def initialize(url)
+      @@q = []
+   
+      def initialize(url)
         @url = url
       end
-
-    def schedule(&block)
-      if @@ios < MAX_IO
-        @@log.debug('++'); block.call ; @@log.debug('--');
-      else
-         EM::next_tick {schedule &block} 
+  
+      def self.set_log(log)
+       @@log = log
       end
-    end
-  
-    def self.set_log(log)
-      @@log = log
-    end
-      
-    def inc_io
-      @@log.debug "IOs: #{@@ios} -> #{@@ios +1}"
-      @@ios += 1
-    end
-  
-    def dec_io
-      @@log.debug "IOs: #{@@ios} -> #{@@ios -1}"
-      @@ios -= 1
-    end
-  
-    def self.outstanding?
-      @@ios > 0
-    end
-  
-    # Non blocking get url
-    def get
-       schedule do
-          inc_io
-          @@log.info("Getting: #{@url}")
-          http = EM::HttpRequest.new(@url).get :redirects => 5
-      
-          http.callback do |h|
-            succeed http.response
-          end
     
-          http.headers do |headers|
-            fail("Error (#{headers.status}) with url:#{@url}") unless OK_ERROR_CODES.include?(headers.status)
-          end        
-    
-          http.errback do
-            fail("Error downloading #{@url}")
-          end       
-        end
-      self 
-    end
-  
-    # Non blocking save file,
-    # Pre: file exists before calling
-    # Post: 'url' written to 'file' 
-    def save(file)
-      schedule do
-        inc_io
-        if File.exists? file
-          fail "#{file} already exists. Skipping..."
-        elsif Dir.exists? file
-          fail "#{file} is a directory"
+      def self.shutdown
+        if @@ios > 0 || @@writes > 0
+           @@q <<  ->{self.shutdown} 
         else
-          directory = file.split(File::SEPARATOR)[0...-1].join(File::SEPARATOR)
-          Dir.mkdir directory unless Dir.exists? directory
+            @@log.info("Stutting...")
+            EM.stop
+        end
+      end
+    
+      def schedule(&block)
+        if @@ios < MAX_IO && @@writes < MAX_WRITES
+          block.call
+        else
+           @@q << block
+        end
+      end
       
-          self.callback do |response|
-            EM::File::write(file, response) do |length|
-              @@log.info "Saving: #{file} (#{length / 1024}KiB)"
-            end
-          end
-                 
+      def inc_io
+        @@log.debug "IOs: #{@@ios} -> #{@@ios + 1}"
+        @@ios += 1
+      end
+  
+      def dec_io
+        @@log.debug "IOs: #{@@ios} -> #{@@ios - 1}"
+        @@ios -= 1
+        release
+      end
+
+      def inc_writes
+        @@log.debug "Writes: #{@@writes} -> #{@@writes + 1}"
+        @@writes += 1
+      end
+  
+      def dec_writes
+        @@log.debug "IOs: #{@@writes} -> #{@@writes - 1}"
+        @@writes -= 1
+        release
+      end
+
+      def release
+        unless @@q.empty? || @@ios >= MAX_IO || @@writes >= MAX_WRITES
+           @@q.pop.call
+        end
+      end
+      
+      protected :inc_io, :dec_io, :inc_writes, :dec_writes, :release, :schedule
+      
+      def fail(msg)
+        super
+        @@log.warn msg
+      end
+      
+      # Non blocking get url
+      def get
+         schedule do
+            inc_io
             @@log.info("Getting: #{@url}")
             http = EM::HttpRequest.new(@url).get :redirects => 5
-         
+      
             http.callback do |h|
               succeed http.response
+              dec_io
             end
-                  
+    
             http.headers do |headers|
-              fail("Error (#{headers.status}) with url:#{@url}") unless OK_ERROR_CODES.include?(headers.status)
+              unless OK_ERROR_CODES.include?(headers.status)
+                fail("Error (#{headers.status}) with url:#{@url}")
+                dec_io
+              end
             end        
-                  
+    
             http.errback do
               fail("Error downloading #{@url}")
-            end                  
-        end
-    
+              dec_io
+            end       
+          end
+        self # Fluent interface
       end
-      self
-    end
+  
+      # Non blocking save file,
+      # Pre: file exists before calling
+      # Post: 'url' written to 'file' 
+      def save(file)
+          if File.exists? file
+            fail "#{file} already exists. Skipping..."
+          elsif Dir.exists? file
+            fail "#{file} is a directory"
+          else
+            directory = file.split(File::SEPARATOR)[0...-1].join(File::SEPARATOR)
+            Dir.mkdir directory unless Dir.exists? directory
+      
+            get do |response|
+              @@writes += 1
+              EM::File::write(file, response) do |length|
+                @@log.info "Saving: #{file} (#{length / 1024}KiB)"
+                @@writes -= 1  
+              end
+            end                            
+        
+          end
+       self # Fluent interface
+      end
 
-    def fail(msg)
-      super
-      @@log.warn msg
-      dec_io    
-    end
-  
-    def succeed(*args)
-      super 
-      dec_io
-    end
-  
   end
     
 end # Module WallLeecher
