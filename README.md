@@ -35,7 +35,7 @@ PLEASE DO NOT UNNECESSARILY DOWNLOAD WALLPAPERS. I'm not responsible if you unin
 Command line
 ---
 This will give the options for a particular site
-`wall-leech simpledesktops -h` 
+`wall-leecher simpledesktops -h` 
 
 `Options:`
 

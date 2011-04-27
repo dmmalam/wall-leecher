@@ -116,7 +116,7 @@ module WallLeecher
       def get
          schedule do
             inc_io
-            @@log.info("Getting: #{@url}")
+            @@log.info("Requesting: #{@url}")
             http = EM::HttpRequest.new(@url).get :redirects => 5
       
             http.callback do |h|
@@ -151,14 +151,14 @@ module WallLeecher
             directory = file.split(File::SEPARATOR)[0...-1].join(File::SEPARATOR)
             Dir.mkdir directory unless Dir.exists? directory
       
-            get do |response|
-              @@writes += 1
+            callback do |response|
+              inc_writes
               EM::File::write(file, response) do |length|
                 @@log.info "Saving: #{file} (#{length / 1024}KiB)"
-                @@writes -= 1  
+                dec_writes  
               end
-            end                            
-        
+            end
+            get
           end
        self # Fluent interface
       end

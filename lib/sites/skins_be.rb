@@ -93,13 +93,15 @@ module WallLeecher
               links = as.find_all do |a| 
                a['href'] =~ /#{SKINS_WALLPAPER_URL}.*#{@options.params.resolution}.*/
               end
-          
+  
               links.each do |l|
                 link = adjust_link l['href'] # Create direct URL to jpg
                 Fetcher.new(link).save(prep_file(link, @options.output))  # Queue download
               end
-              scrape_links(page += 1, last)
+              
+              scrape_links(page + 1, last)
             end
+            
             fetcher.errback do
               shutdown 
             end
