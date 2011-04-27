@@ -153,7 +153,7 @@ module WallLeecher
             fail "#{file} is a directory"
           else
             directory = file.split(File::SEPARATOR)[0...-1].join(File::SEPARATOR)
-            Dir.mkdir directory unless Dir.exists? directory
+            FileUtils.mkpath directory unless Dir.exists? directory
       
             callback do |response|
               inc_writes

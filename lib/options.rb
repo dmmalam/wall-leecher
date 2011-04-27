@@ -13,6 +13,15 @@ module WallLeecher
   class Options
   
     BANNER = "Usage: wall-leech.rb SITE [options] [site-options]"
+    
+    def self.version
+      [0,2,2]
+    end
+    
+    def self.default_resolution
+      "1920x1200"
+    end
+    
     attr_accessor :sites
   
     def initialize(sites)
@@ -93,14 +102,6 @@ module WallLeecher
       options.params = OpenStruct.new(params)
       options
   
-    end
-    
-    def self.version
-      [0,2,1]
-    end
-
-    def self.default_resolution
-      "1920x1200"
     end
     
     protected
