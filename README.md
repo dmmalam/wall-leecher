@@ -13,11 +13,11 @@ Later I was experimenting with EM for batch IO processing, so  I thought I'll re
 
 How
 ---
-` gem install wall-leech`
+` gem install wall-leecher`
 
 Usage
 ---
-wall-leech SITE [options] [site-options]
+wall-leecher SITE [options] [site-options]
 
 Where SITE is one from (case insensitive):
 
